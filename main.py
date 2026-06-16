@@ -236,12 +236,10 @@ def code_node(state: State):
 
         print("\n[上下文压缩] 消息过多，压缩历史...")
 
-        # 保留system消息和最近2条
         system_msg = messages[0]
         recent_msgs = messages[-2:]
         middle_msgs = messages[1:-2]
 
-        # 把中间消息拼成文本摘要
         history_text = ""
         for msg in middle_msgs:
             role = msg.get("role", "")
@@ -263,7 +261,6 @@ def code_node(state: State):
         summary = summary_response.choices[0].message.content
         print(f"压缩摘要: {summary[:100]}...")
 
-        # 重新组合：system + 摘要 + 最近2条
         compressed = [
             system_msg,
             {"role": "user", "content": f"[历史摘要] {summary}"},
@@ -272,22 +269,13 @@ def code_node(state: State):
         print(f"消息数: {len(messages)} → {len(compressed)}")
         return compressed
 
-    def code_node(state: State):
-        print("\n[CodeAgent] 按DAG顺序执行任务...")
-
-        dag = json.loads(state["plan"])
-        tasks = dag["tasks"]
-
-        # 如果是工具调用返回，继续当前messages
-        if state["messages"]:
-            # 上下文压缩
-            state["messages"] = compress_messages(state["messages"])
-
-    # 如果是工具调用返回，继续当前messages
+    # ↓ 删掉了错误嵌套的 code_node，在正确位置调用 compress_messages
     if state["messages"]:
         last_msg = state["messages"][-1]
         if last_msg.get("role") == "tool":
-            # 工具执行完，继续让LLM处理
+            # 工具执行完，先压缩再继续
+            state["messages"] = compress_messages(state["messages"])
+
             response = client.chat.completions.create(
                 model="deepseek-ai/DeepSeek-V3",
                 messages=state["messages"],
@@ -327,7 +315,6 @@ def code_node(state: State):
     completed = []
     execution_order = []
 
-    # 拓扑排序
     remaining = list(tasks)
     while remaining:
         for task in remaining:
@@ -337,7 +324,6 @@ def code_node(state: State):
                 remaining.remove(task)
                 break
 
-    # 构建任务描述
     task_desc = f"目标：{dag['goal']}\n\n按以下顺序执行任务：\n"
     for i, task in enumerate(execution_order):
         deps_str = f"（依赖：{', '.join(task['depends_on'])}）" if task["depends_on"] else "（无前置依赖）"
