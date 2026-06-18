@@ -269,11 +269,10 @@ def code_node(state: State):
         print(f"消息数: {len(messages)} → {len(compressed)}")
         return compressed
 
-    # ↓ 删掉了错误嵌套的 code_node，在正确位置调用 compress_messages
     if state["messages"]:
         last_msg = state["messages"][-1]
         if last_msg.get("role") == "tool":
-            # 工具执行完，先压缩再继续
+            # 工具执行完，先压缩再继续（compress_messages 在函数顶部定义，此处正确调用）
             state["messages"] = compress_messages(state["messages"])
 
             response = client.chat.completions.create(

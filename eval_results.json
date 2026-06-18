@@ -1,0 +1,72 @@
+{
+  "summary": {
+    "total": 10,
+    "success_count": 10,
+    "success_rate": "100.0%",
+    "one_shot_rate": "100.0%",
+    "avg_repairs": 0.0,
+    "avg_time_seconds": 47.69
+  },
+  "details": [
+    {
+      "task": "写一个函数计算两个数的最大公约数",
+      "success": true,
+      "repairs": 0,
+      "time": 46.1
+    },
+    {
+      "task": "写一个函数判断一个数是否是质数",
+      "success": true,
+      "repairs": 0,
+      "time": 38.25
+    },
+    {
+      "task": "写一个函数实现冒泡排序",
+      "success": true,
+      "repairs": 0,
+      "time": 57.05
+    },
+    {
+      "task": "写一个函数计算斐波那契数列第n项",
+      "success": true,
+      "repairs": 0,
+      "time": 56.26
+    },
+    {
+      "task": "写一个函数反转字符串",
+      "success": true,
+      "repairs": 0,
+      "time": 30.68
+    },
+    {
+      "task": "写一个函数统计字符串中每个字符出现的次数",
+      "success": true,
+      "repairs": 0,
+      "time": 32.47
+    },
+    {
+      "task": "写一个函数实现二分查找",
+      "success": true,
+      "repairs": 0,
+      "time": 57.09
+    },
+    {
+      "task": "写一个函数计算列表的中位数",
+      "success": true,
+      "repairs": 0,
+      "time": 80.67
+    },
+    {
+      "task": "写一个函数判断字符串是否是回文",
+      "success": true,
+      "repairs": 0,
+      "time": 48.2
+    },
+    {
+      "task": "写一个函数将列表去重并保持原顺序",
+      "success": true,
+      "repairs": 0,
+      "time": 30.09
+    }
+  ]
+}

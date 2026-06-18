@@ -1,6 +1,22 @@
+# 环境变量（绝对不能提交）
 .env
-__pycache__/
-*.pyc
+
+# 代码执行输出目录
 workspace/
-eval_results.json
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+
+# 虚拟环境
+.venv/
 venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+
+# 系统文件
+.DS_Store
+Thumbs.db
