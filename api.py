@@ -1,12 +1,48 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from main import graph
 import uvicorn
+import sqlite3
+import json
+import os
 
 app = FastAPI(title="CodePilot")
 
-# 存储每个会话的对话历史
-sessions = {}
+DB_PATH = "sessions.db"
+
+# ============ SQLite 持久化 ============
+
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS sessions (
+            session_id TEXT PRIMARY KEY,
+            messages TEXT NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+def load_session(session_id: str) -> list:
+    conn = sqlite3.connect(DB_PATH)
+    row = conn.execute(
+        "SELECT messages FROM sessions WHERE session_id = ?", (session_id,)
+    ).fetchone()
+    conn.close()
+    if row:
+        return json.loads(row[0])
+    return []
+
+def save_session(session_id: str, messages: list):
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute(
+        "INSERT OR REPLACE INTO sessions (session_id, messages) VALUES (?, ?)",
+        (session_id, json.dumps(messages, ensure_ascii=False))
+    )
+    conn.commit()
+    conn.close()
+
+init_db()
 
 SYSTEM_PROMPT = """你是一个Python编程助手。
 当用户提出编程需求时，你需要：
@@ -30,42 +66,43 @@ class ChatResponse(BaseModel):
 @app.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest):
     session_id = request.session_id
+    messages = load_session(session_id)
 
-    # 初始化新会话
-    if session_id not in sessions:
-        sessions[session_id] = [
-            {"role": "system", "content": SYSTEM_PROMPT}
-        ]
+    if not messages:
+        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
 
-    # 追加用户消息
-    sessions[session_id].append({
-        "role": "user",
-        "content": request.message
-    })
+    messages.append({"role": "user", "content": request.message})
 
-    # 调用 graph
-    state = graph.invoke({
-        "messages": sessions[session_id],
-        "finished": False
-    })
+    try:
+        # 补全 State 所有必要字段
+        state = graph.invoke({
+            "user_request": request.message,
+            "plan": "",
+            "code_result": "",
+            "review": "",
+            "messages": messages,
+            "finished": False
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Agent 执行失败: {str(e)}")
 
-    # 更新会话历史
-    sessions[session_id] = state["messages"]
+    updated_messages = state.get("messages", messages)
+    save_session(session_id, updated_messages)
 
-    # 取最后一条 assistant 消息作为回复
     reply = ""
-    for msg in reversed(state["messages"]):
+    for msg in reversed(updated_messages):
         if msg.get("role") == "assistant" and msg.get("content"):
             reply = msg["content"]
             break
+
+    if not reply:
+        raise HTTPException(status_code=500, detail="Agent 未返回有效回复")
 
     return ChatResponse(reply=reply, session_id=session_id)
 
 
 @app.get("/sessions/{session_id}/files")
 def list_session_files(session_id: str):
-    """列出 workspace 下的文件"""
-    import os
     workspace = "workspace"
     if not os.path.exists(workspace):
         return {"files": []}
@@ -74,9 +111,10 @@ def list_session_files(session_id: str):
 
 @app.delete("/sessions/{session_id}")
 def clear_session(session_id: str):
-    """清除会话历史"""
-    if session_id in sessions:
-        del sessions[session_id]
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
+    conn.commit()
+    conn.close()
     return {"message": f"会话 {session_id} 已清除"}
 
 

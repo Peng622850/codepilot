@@ -311,17 +311,24 @@ def code_node(state: State):
                 }
 
     # 第一次进入：按拓扑顺序构建执行指令
-    completed = []
+    # 替换 code_node 里的拓扑排序部分
+    completed = set()
     execution_order = []
-
     remaining = list(tasks)
+
     while remaining:
-        for task in remaining:
+        progress = False
+        for task in remaining[:]:  # 遍历副本，安全移除
             if all(dep in completed for dep in task["depends_on"]):
                 execution_order.append(task)
-                completed.append(task["id"])
+                completed.add(task["id"])
                 remaining.remove(task)
-                break
+                progress = True
+        if not progress:
+            # 存在循环依赖，直接按原顺序兜底
+            print("[警告] 检测到循环依赖，按原顺序执行")
+            execution_order = list(tasks)
+            break
 
     task_desc = f"目标：{dag['goal']}\n\n按以下顺序执行任务：\n"
     for i, task in enumerate(execution_order):
